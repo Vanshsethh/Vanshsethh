@@ -33,7 +33,7 @@ dashboard ─▶ nginx :80 ─▶ api-service (Node) ─▶ MongoDB + Redis
 
 **Tech:** `Go` `Gin` `gorilla/websocket` `Node.js` `Express` `Mongoose` `React` `Vite` `Tailwind` `Zustand` `Recharts` `MongoDB` `Redis` `RabbitMQ` `Nginx` `Docker Compose`
 
-→ `github.com/Vanshsethh/logpulse`
+→ [github.com/Vanshsethh/logpulse](https://github.com/Vanshsethh/logpulse)
 
 ---
 
@@ -69,7 +69,7 @@ dashboard ─▶ admin-service ─▶ Redis / MySQL ─▶ fleet view, spend, ki
 
 **Tech:** `Node.js` `Express` `MySQL` `Redis` `Open Policy Agent` `Rego` `React` `Vite` `Tailwind` `Zustand` `Recharts` `Docker Compose`
 
-→ `github.com/Vanshsethh/forge`
+→ [github.com/Vanshsethh/forge](https://github.com/Vanshsethh/forge)
 
 ---
 
