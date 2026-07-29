@@ -1,6 +1,6 @@
 ## Hey, I'm Vansh
 
-Backend / full-stack engineer building distributed systems — log pipelines, governance control planes, and real-time infrastructure. I design for multi-tenancy, fail-closed defaults, and trust boundaries. Open to building software that holds up under real load.
+Hi, I'm Vansh, a Backend & Full-Stack Developer passionate about building scalable software and modern web applications. I enjoy working on backend systems, developer tools, and exploring distributed architectures. I'm always learning, building, and looking for opportunities to contribute to impactful products.
 
 `vanshseth0209@gmail.com` · [LinkedIn](https://www.linkedin.com/in/vansh-seth-03bb66324/)
 
