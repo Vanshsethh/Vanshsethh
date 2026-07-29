@@ -1,60 +1,87 @@
 ## Hey, I'm Vansh
 
-I build distributed backend systems and real-time infrastructure — log pipelines, governance control planes, and the kind of services that sit between an application and its data. I work across Go and Node.js, design for multi-tenancy and fail-closed defaults, and care about the unglamorous parts: rate limiting, audit trails, and trust boundaries. Currently open to learning and building software that holds up under real load.
+Backend / full-stack engineer building distributed systems — log pipelines, governance control planes, and real-time infrastructure. I design for multi-tenancy, fail-closed defaults, and trust boundaries. Open to building software that holds up under real load.
+
+`vanshseth0209@gmail.com` · [LinkedIn](https://www.linkedin.com/in/vansh-seth-03bb66324/)
 
 ---
 
 ### LogPulse — Real-Time Log Aggregation & Alerting
 
-A self-hosted platform where applications send logs to a single HTTP endpoint and LogPulse handles the rest: validation, durable storage, live streaming, search, and threshold-based alerting.
+Self-hosted log platform. Apps send logs to one endpoint; LogPulse validates, stores, streams live, and fires alerts.
 
-**Problem it solves:** Centralized log visibility without the cost of Datadog or Grafana Cloud. One ingestion endpoint, multi-tenant isolation, and alerts that fire the moment something breaks.
+```text
+app ─POST /ingest─▶ ingestor (Go) ─▶ RabbitMQ fanout
+                                        ├─ processor (Go) ─▶ MongoDB
+                                        ├─ ws-service (Go) ─▶ browser (WebSocket)
+                                        └─ alert-service (Node) ─▶ email / webhook
 
-**Architecture highlights:**
-- **Go for the hot path, Node for the I/O path.** The ingestor, processor, and WebSocket service are written in Go for concurrency and memory efficiency. The API and alert services stay in Node.js because they're event-driven, not CPU-bound.
-- **RabbitMQ fanout as the backbone.** Every log hits a fanout exchange and fans out to three queues simultaneously — storage, streaming, and alerting. If MongoDB is down, logs queue safely and nothing is lost.
-- **Trust boundary at the ingestor.** It's the only service touching untrusted input. It does full sanitization, API-key authentication, and dual-layer rate limiting. Every downstream service validates shape but trusts content.
-- **WebSocket auth in the first message, not the URL.** JWT is sent as the first frame after connection — query params leak into server logs. The server validates the token, checks project membership via the API service, and joins the client to a project-scoped room.
-- **Redis sliding-window counters for alerting.** Each rule maintains a sorted set in Redis. Logs are added with timestamps, old entries are pruned, and the count is checked against the threshold. Cooldowns are separate Redis TTL keys.
+dashboard ─▶ nginx :80 ─▶ api-service (Node) ─▶ MongoDB + Redis
+```
 
-**Core features:** Live tail console (500-log ring buffer), full-text search with pagination, analytics dashboard, alert rule builder (threshold + level + service filter, 1m/5m/15m windows, 5m/15m/30m cooldowns), email + webhook delivery, project-level multi-tenancy with admin/member roles, 30-day TTL auto-retention.
+| | |
+|---|---|
+| **Problem** | Centralized log visibility without Datadog/Grafana Cloud cost |
+| **Hot path** | Go for ingestor, processor, ws-service — concurrency + memory efficiency |
+| **I/O path** | Node.js for api-service, alert-service — event-driven, not CPU-bound |
+| **Trust boundary** | Ingestor is the only service touching untrusted input — full sanitization |
+| **Rate limiting** | Dual-layer: Nginx (per IP) + ingestor (per API key, 1000/min, 50/sec burst) |
+| **Alerting** | Redis sliding-window counters (ZSET) + cooldown TTL keys |
+| **WebSocket auth** | JWT in first message, not query param — project-scoped rooms |
+| **Tenancy** | `projectId` on every document and query · admin / member roles |
+| **Retention** | 30-day auto-delete via MongoDB TTL index |
 
-**Tech:** Go · Gin · gorilla/websocket · Node.js · Express · Mongoose · React · Vite · Tailwind · Zustand · Recharts · MongoDB · Redis · RabbitMQ · Nginx · Docker Compose
+**Tech:** `Go` `Gin` `gorilla/websocket` `Node.js` `Express` `Mongoose` `React` `Vite` `Tailwind` `Zustand` `Recharts` `MongoDB` `Redis` `RabbitMQ` `Nginx` `Docker Compose`
 
-`github.com/Vanshsethh/logpulse`
+→ `github.com/Vanshsethh/logpulse`
 
 ---
 
 ### Forge — Governance Control Plane for Autonomous Financial Agents
 
-A real-time guardrail system that evaluates every action an AI agent wants to take before it executes — policy check, spend cap enforcement, kill switch, and a tamper-evident audit ledger.
+Real-time guardrail system. Every AI agent action passes through Forge before execution — policy check, spend cap, kill switch, tamper-evident audit.
 
-**Problem it solves:** As banks deploy fleets of autonomous agents acting in milliseconds, one mis-scoped or compromised agent could take thousands of harmful actions before anyone notices. Forge is the infrastructure to scope, meter, halt, and audit them.
+```text
+agent ─HMAC signed─▶ gateway-service ─▶ OPA (policy) ─▶ Redis (spend caps)
+                         │                                │
+                         ├─ kill switch check             ├─ per-tx / hourly / daily caps
+                         ├─ revocation check              │
+                         └─ verdict: allow / deny         ▼
+                              │                    MySQL audit ledger
+                              │                    (SHA-256 hash chain)
+                              ▼
+                    fail-closed: deny if any dependency is down
 
-**Architecture highlights:**
-- **Fail-closed by design.** If OPA, Redis, or MySQL is unreachable, the default verdict is deny. A governance layer that fails open is worse than no governance layer.
-- **OPA as a sidecar, not embedded.** Policies are evaluated over HTTP by the Open Policy Agent, so rules can be updated without redeploying the gateway — the same pattern Netflix and other companies use in production.
-- **Tamper-evident SHA-256 hash chain.** Every decision is appended to a MySQL audit log where each entry's hash includes the previous entry's hash. The application MySQL user has no UPDATE or DELETE privilege on the audit table. A test mutates a row through a root connection and proves the verifier detects the exact altered entry.
-- **Gateway/admin split for hot-path isolation.** The gateway evaluates and logs — nothing else. The admin API handles dashboard queries and configuration. Splitting them means a heavy audit-log query never slows down an agent action.
-- **HMAC-signed agent requests with replay protection.** The simulator signs requests with the same HMAC format the gateway verifies.
+dashboard ─▶ admin-service ─▶ Redis / MySQL ─▶ fleet view, spend, kill switches
+```
 
-**Core features:** Per-transaction / hourly / daily Redis-backed spend caps, fleet-wide and per-agent kill switches, OPA policy evaluation (payments, servicing, travel), append-only audit ledger with tamper-detection test, React operator dashboard, three-agent fleet simulator with a rogue overspend scenario.
+| | |
+|---|---|
+| **Problem** | Autonomous agents act in milliseconds — one mis-scoped agent = thousands of harmful actions |
+| **Fail-closed** | OPA / Redis / MySQL down → automatic deny, never a silent allow |
+| **Policy engine** | OPA as HTTP sidecar — update rules without redeploying the gateway |
+| **Audit ledger** | Append-only SHA-256 hash chain · app MySQL user has no UPDATE/DELETE privilege |
+| **Tamper proof** | Test mutates a row via root connection, verifier detects the exact altered entry |
+| **Spend caps** | Redis sliding-window counters — per-transaction, hourly, daily |
+| **Kill switches** | Fleet-wide + per-agent, instant revocation via Redis flags |
+| **Gateway/admin split** | Hot path (evaluate + log) isolated from dashboard queries |
+| **Simulator** | 3 agents (payments, servicing, travel) + rogue overspend scenario |
 
-**Tech:** Node.js · Express · MySQL · Redis · Open Policy Agent (Rego) · React · Vite · Tailwind · Zustand · Recharts · Docker Compose
+**Tech:** `Node.js` `Express` `MySQL` `Redis` `Open Policy Agent` `Rego` `React` `Vite` `Tailwind` `Zustand` `Recharts` `Docker Compose`
 
-`github.com/Vanshsethh/forge`
+→ `github.com/Vanshsethh/forge`
 
 ---
 
 ### Technical Skills
 
-| | |
+| Category | Technologies |
 |---|---|
-| **Languages** | Go · JavaScript · SQL · Rego |
-| **Backend** | Node.js · Express · Go · Gin · JWT · bcrypt · Helmet · express-validator · Open Policy Agent |
-| **Frontend** | React · Vite · Tailwind · Zustand · Recharts · Axios |
-| **Databases** | MongoDB · MySQL · Redis |
-| **DevOps & Infra** | Docker · Docker Compose · Nginx · RabbitMQ · GitHub |
+| **Languages** | `Go` `JavaScript` `SQL` `Rego` |
+| **Backend** | `Node.js` `Express` `Go` `Gin` `JWT` `bcrypt` `Helmet` `OPA` |
+| **Frontend** | `React` `Vite` `Tailwind` `Zustand` `Recharts` `Axios` |
+| **Databases** | `MongoDB` `MySQL` `Redis` |
+| **DevOps & Infra** | `Docker` `Docker Compose` `Nginx` `RabbitMQ` |
 | **Concepts** | Microservices · Message Queues · Rate Limiting · Multi-tenancy · WebSocket Auth · Hash-chain Audit · Fail-closed Design |
 
 ---
@@ -65,9 +92,3 @@ A real-time guardrail system that evaluates every action an AI agent wants to ta
   <img height="160" src="https://github-readme-stats.vercel.app/api?username=Vanshsethh&show_icons=true&theme=dark&hide_border=true&count_private=true" />
   <img height="160" src="https://github-readme-stats.vercel.app/api/top-langs/?username=Vanshsethh&layout=compact&theme=dark&hide_border=true" />
 </p>
-
----
-
-### Contact
-
-`vanshseth0209@gmail.com` · [LinkedIn](https://www.linkedin.com/in/vansh-seth-03bb66324/)
