@@ -84,17 +84,6 @@ dashboard ─▶ admin-service ─▶ Redis / MySQL ─▶ fleet view, spend, ki
 
 ---
 
-### Competitive Programming
-
-| Platform | Achievement |
-|---|---|
-| **LeetCode** | Max Rating 1686 — top 0.5% globally |
-| **CodeChef** | 3-Star, Max Rating 2050 — top 1% · ICPC Regionals 2025 qualifier |
-| **Codeforces** | Pupil, Max Rating 1230 — top 8% of active users |
-| **Meta Hacker Cup 2025** | Round 2 — Ranked 1055 globally (Top 5% of 20,000+) |
-| **HackHazards 2025** | Runner-up, national hackathon |
-
----
 
 ### GitHub Stats
 
